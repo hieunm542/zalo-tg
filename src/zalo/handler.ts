@@ -193,7 +193,15 @@ export function setupZaloHandler(api: ZaloAPI): void {
 
   api.listener.on('message', async (msg: ZaloMessage) => {
     try {
-      if (msg.isSelf) return;
+      // Keep self messages from the Zalo app, but skip echoes originating
+      // from our own TG→Zalo bridge sends.
+      if (msg.isSelf) {
+        const incomingIds = [msg.data.msgId, msg.data.realMsgId]
+          .filter((id): id is string => Boolean(id))
+          .map(String);
+        const isFromBridge = incomingIds.some((id) => sentMsgStore.getByZaloMsgId(id) !== undefined);
+        if (isFromBridge) return;
+      }
 
       const zaloId     = msg.threadId;
       const type       = msg.type as 0 | 1;
